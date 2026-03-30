@@ -43,6 +43,8 @@ function MyBookings() {
   const { authToken } = useContext(AuthContext);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [animateCards, setAnimateCards] = useState(false);
 
   const formatDate = (value) => {
     if (!value) return "-";
@@ -83,6 +85,15 @@ function MyBookings() {
     }
   }, [authToken]);
 
+  useEffect(() => {
+    setAnimateCards(false);
+    const timer = setTimeout(() => {
+      setAnimateCards(true);
+    }, 40);
+
+    return () => clearTimeout(timer);
+  }, [activeFilter, bookings.length]);
+
   const totalSpent = bookings.reduce(
     (sum, booking) => sum + Number(booking.total_price || 0),
     0
@@ -95,6 +106,39 @@ function MyBookings() {
   const completedBookings = bookings.filter(
     (booking) => booking.status === "completed"
   ).length;
+
+  const filterTabs = [
+    {
+      key: "all",
+      label: "All",
+      count: bookings.length,
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      count: bookings.filter((booking) => booking.status === "pending").length,
+    },
+    {
+      key: "confirmed",
+      label: "Confirmed",
+      count: bookings.filter((booking) => booking.status === "confirmed").length,
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      count: completedBookings,
+    },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      count: bookings.filter((booking) => booking.status === "cancelled").length,
+    },
+  ];
+
+  const filteredBookings = bookings.filter((booking) => {
+    if (activeFilter === "all") return true;
+    return booking.status === activeFilter;
+  });
 
   if (loading) {
     return (
@@ -167,15 +211,64 @@ function MyBookings() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-5">
-            {bookings.map((booking) => {
+          <>
+            <div className="mb-5 flex flex-wrap items-center gap-2 md:gap-3">
+              {filterTabs.map((tab) => {
+                const isActive = activeFilter === tab.key;
+
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveFilter(tab.key)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-700"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredBookings.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  No {activeFilter} bookings
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Try another filter to view more reservations.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("all")}
+                  className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                >
+                  View All Bookings
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {filteredBookings.map((booking, index) => {
               const statusData =
                 statusIconMap[booking.status] || statusIconMap.pending;
 
               return (
                 <article
                   key={booking.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-300 p-5 md:p-6"
+                  className={`bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-500 p-5 md:p-6 ${
+                    animateCards ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                  }`}
+                  style={{ transitionDelay: `${Math.min(index * 70, 350)}ms` }}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
                     <div className="flex items-center gap-4 min-w-0">
@@ -284,7 +377,9 @@ function MyBookings() {
                 </article>
               );
             })}
-          </div>
+              </div>
+            )}
+          </>
         )}
 
         {bookings.length > 0 && (
