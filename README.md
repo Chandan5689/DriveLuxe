@@ -3,28 +3,6 @@
 DriveLuxe is a full-stack car rental web application built with Django REST Framework and React.
 It provides a luxury-focused booking experience with protected booking flow, booking history, and responsive UI across devices.
 
-## Screenshots
-
-Add your screenshots in the folder below:
-
-- `assets/screenshots/homepage.png`
-- `assets/screenshots/cars-page.png`
-- `assets/screenshots/booking-page.png`
-- `assets/screenshots/mybookings-page.png`
-
-Then they will appear automatically in this README.
-
-### Home Page
-![Home Page](assets/screenshots/homepage.png)
-
-### Cars Page
-![Cars Page](assets/screenshots/cars-page.png)
-
-### Booking Page
-![Booking Page](assets/screenshots/booking-page.png)
-
-### Booking History (My Bookings)
-![My Bookings Page](assets/screenshots/mybookings-page.png)
 
 ## Features
 
@@ -167,15 +145,6 @@ Base URL:
 
 - `/api/`
 
-Main endpoints:
-
-- `POST /api/register/`
-- `POST /api/login/`
-- `GET /api/cars/`
-- `GET /api/cars/:id/`
-- `GET /api/bookings/` (auth required)
-- `POST /api/bookings/` (auth required)
-
 ## Booking Validation Rules
 
 - Pickup and return dates are required
@@ -196,13 +165,26 @@ Main endpoints:
   - `/booking/:id`
   - `/mybookings`
 
-## Deployment Notes
 
-For production:
 
-- Set `DJANGO_DEBUG=False`
-- Use a strong `DJANGO_SECRET_KEY`
-- Restrict `DJANGO_ALLOWED_HOSTS` and `DJANGO_CORS_ALLOWED_ORIGINS`
-- Use a production database instead of SQLite
-- Build frontend with `npm run build` and serve static assets appropriately
+## Screenshots
 
+Add your screenshots in the folder below:
+
+- `assets/screenshots/homepage.png`
+- `assets/screenshots/cars-page.png`
+- `assets/screenshots/booking-page.png`
+- `assets/screenshots/mybookings-page.png`
+
+
+### Home Page
+![Home Page](assets/screenshots/homepage.png)
+
+### Cars Page
+![Cars Page](assets/screenshots/cars-page.png)
+
+### Booking Page
+![Booking Page](assets/screenshots/booking-page.png)
+
+### Booking History (My Bookings)
+![My Bookings Page](assets/screenshots/mybookings-page.png)
