@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
@@ -11,12 +11,14 @@ import CarDetail from "./pages/CarDetail";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import SSOCallback from "./context/SSOCallback";
 function App() {
 
   return (
     <BrowserRouter>
       <div className="flex flex-col min-h-screen">
         <Navbar />
+      
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -46,6 +48,8 @@ function App() {
                 <MyBookings />
               </ProtectedRoute>
             }/>
+
+            <Route path="/sso-callback" element={<SSOCallback />} />
           </Routes>
         </main>
         <Footer />

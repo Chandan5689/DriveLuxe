@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { getCarById, getCars } from "../../data/carData";
 import { AuthContext } from "../../context/authContextValue";
 import { API_ENDPOINTS } from "../../config/api";
+import { useToast } from "../../context/useToast";
 const Booking = () => {
   const useAuth = () => useContext(AuthContext);
-  const { authToken } = useAuth();
+  const { getAuthToken } = useAuth();
+  const toast = useToast();
   const { id } = useParams();
   const [selectedCar, setSelectedCar] = useState(null);
   const [availableCars, setAvailableCars] = useState([]);
@@ -31,6 +33,7 @@ const Booking = () => {
   });
   const [errors, setErrors] = useState({});
   const [bookingComplete, setBookingComplete] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Set minimum dates for pickup and return
   const today = new Date();
@@ -46,6 +49,20 @@ const Booking = () => {
 
   const minPickupDate = formatDate(today);
   const minReturnDate = formatDate(tomorrow);
+
+  const extractErrorMessage = (payload, fallback) => {
+    if (!payload) return fallback;
+    if (typeof payload === "string") return payload;
+    if (Array.isArray(payload)) return payload.join(" ").trim() || fallback;
+    if (typeof payload === "object") {
+      if (typeof payload.detail === "string" && payload.detail.trim()) {
+        return payload.detail;
+      }
+      const flattened = Object.values(payload).flat().join(" ").trim();
+      return flattened || fallback;
+    }
+    return fallback;
+  };
 
   useEffect(() => {
     const fetchCarData = async () => {
@@ -64,13 +81,15 @@ const Booking = () => {
         setAvailableCars(cars);
       } catch (error) {
         console.error("Failed to fetch car data:", error);
+        setAvailableCars([]);
+        toast.error("Unable to load available vehicles right now. Please refresh and try again.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCarData();
-  }, [id]);
+  }, [id, toast]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -172,16 +191,26 @@ const Booking = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+
+    if (!validateStep(3)) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const apiUrl = API_ENDPOINTS.BOOKINGS;
 
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Token ${authToken}`, // authToken from context
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           car: selectedCar?.id,
@@ -202,19 +231,28 @@ const Booking = () => {
         }),
       });
 
-      const data = await response.json();
+      const responseIsJson =
+        response.headers.get("content-type")?.includes("application/json") ||
+        false;
+      const data = responseIsJson ? await response.json() : null;
 
       if (response.ok) {
         setBookingComplete(true);
         setBookingData(data);
+        toast.success("Booking confirmed successfully.");
       } else {
-        const errors = Object.values(data).flat().join(" ");
-        console.log(errors || "Booking failed. Please try again.");
+        toast.error(
+          extractErrorMessage(data, "Booking failed. Please check your details and try again.")
+        );
       }
     } catch (error) {
       console.error("Booking error:", error);
+      toast.error(
+        error?.message ||
+          "We could not complete your booking. Please try again in a moment."
+      );
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -458,38 +496,44 @@ const Booking = () => {
                           <p className="mb-4 text-gray-600">
                             Please select a vehicle from our fleet:
                           </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                            {availableCars.map((car) => (
-                              <button
-                                key={car.id}
-                                type="button"
-                                onClick={() => handleCarSelect(car)}
-                                className="bg-gray-50 rounded-lg p-3 flex items-center hover:bg-gray-100 transition-colors text-left"
-                              >
-                                <img
-                                  src={car.image}
-                                  alt={car.name}
-                                  className="w-20 h-14 object-cover rounded mr-3"
-                                />
-                                <div className="flex-grow">
-                                  <h3 className="font-medium text-sm">
-                                    {car.name}
-                                  </h3>
-                                  <p className="text-gray-600 text-xs">
-                                    {car.category}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-bold text-blue-600">
-                                    ${car.price}
-                                    <span className="text-gray-500 text-xs font-normal">
-                                      /day
-                                    </span>
-                                  </p>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
+                          {availableCars.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                              {availableCars.map((car) => (
+                                <button
+                                  key={car.id}
+                                  type="button"
+                                  onClick={() => handleCarSelect(car)}
+                                  className="bg-gray-50 rounded-lg p-3 flex items-center hover:bg-gray-100 transition-colors text-left"
+                                >
+                                  <img
+                                    src={car.image}
+                                    alt={car.name}
+                                    className="w-20 h-14 object-cover rounded mr-3"
+                                  />
+                                  <div className="flex-grow">
+                                    <h3 className="font-medium text-sm">
+                                      {car.name}
+                                    </h3>
+                                    <p className="text-gray-600 text-xs">
+                                      {car.category}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold text-blue-600">
+                                      ${car.price}
+                                      <span className="text-gray-500 text-xs font-normal">
+                                        /day
+                                      </span>
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                              No vehicles are available at the moment. Please try again shortly.
+                            </div>
+                          )}
                           {errors.car && (
                             <p className="text-red-600 text-sm mt-2">
                               {errors.car}
@@ -719,7 +763,7 @@ const Booking = () => {
                       <button
                         type="button"
                         onClick={handleNextStep}
-                        disabled={!selectedCar}
+                        disabled={!selectedCar || isSubmitting}
                         className="w-full bg-blue-600 text-white py-3 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-6 cursor-pointer"
                       >
                         Continue to Personal Details
@@ -1087,6 +1131,7 @@ const Booking = () => {
                         <button
                           type="button"
                           onClick={handlePrevStep}
+                          disabled={isSubmitting}
                           className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-md font-medium hover:bg-gray-400 disabled:opacity-50 transition-colors cursor-pointer"
                         >
                           Back
@@ -1094,6 +1139,7 @@ const Booking = () => {
                         <button
                           type="button"
                           onClick={handleNextStep}
+                          disabled={isSubmitting}
                           className="flex-1 bg-blue-600 text-white py-3 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
                         >
                           Continue
@@ -1416,9 +1462,19 @@ const Booking = () => {
                       </div>
 
                       <div className="flex flex-col space-y-4">
-                        
-                        <button className="w-full bg-green-600 text-white py-3 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 transition-colors mt-6 cursor-pointer" type="submit">Confirm & Pay</button>
-                        <button type="button" onClick={handlePrevStep} className="w-full bg-gray-200 text-gray-800 py-3 rounded-md font-medium hover:bg-gray-400 disabled:opacity-50 transition-colors cursor-pointer">
+                        <button
+                          className="w-full bg-green-600 text-white py-3 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 transition-colors mt-6 cursor-pointer"
+                          type="submit"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Processing Booking..." : "Confirm & Pay"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePrevStep}
+                          disabled={isSubmitting}
+                          className="w-full bg-gray-200 text-gray-800 py-3 rounded-md font-medium hover:bg-gray-400 disabled:opacity-50 transition-colors cursor-pointer"
+                        >
                           Back
                         </button>
                       </div>

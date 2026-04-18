@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {getCategories,getCarsByCategory,searchCars,} from "../data/carData";
 import CarCard from "../components/ui/CarCard";
 import { useSearchParams } from "react-router-dom";
 import { IoSearchOutline } from "react-icons/io5";
 import { HiOutlineEmojiSad } from "react-icons/hi";
+import { useToast } from "../context/useToast";
 function Cars() {
+  const toast = useToast();
+  const lastToastMessageRef = useRef("");
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredCars, setFilteredCars] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -15,6 +18,7 @@ function Cars() {
   // const [minPrice,setMinPrice] = useState(0);
   // const [maxPrice,setMaxPrice] = useState(1500);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   //Initialize from URL params
   useEffect(() => {
@@ -25,6 +29,7 @@ function Cars() {
       // const initialMaxPrice = parseInt(searchParams.get("maxPrice")) || 1500;
       setSelectedCategory(category);
       setSearchQuery(query);
+      setErrorMessage("");
       // setMinPrice(initialMinPrice);
       // setMaxPrice(initialMaxPrice);
       try {
@@ -33,6 +38,7 @@ function Cars() {
       } catch (error) {
         console.error("Error fetching categories:", error);
         setCategories(["All"]); // Fallback in case of error
+        setErrorMessage("Some filters could not be loaded. You can still browse all cars.");
       }
       //Simulate loading effect
       setTimeout(() => {
@@ -48,6 +54,7 @@ function Cars() {
       setIsLoading(true);
       let results = [];
       try {
+        setErrorMessage("");
         const carsByCategory = await getCarsByCategory(
           selectedCategory === "All" ? null : selectedCategory
         );
@@ -63,6 +70,7 @@ function Cars() {
             console.error("searchCars did not return an array.");
             // Handle the non-array case, perhaps set results to an empty array
             results = [];
+            setErrorMessage("Search is temporarily unavailable. Please try a different query.");
           }
         }
         //price filter 
@@ -82,6 +90,7 @@ function Cars() {
       } catch (error) {
         console.error("Error filtering cars:", error);
         results = [];
+        setErrorMessage("We couldn't load cars right now. Please reset filters and try again.");
       } finally {
         setFilteredCars(results);
         setIsLoading(false);
@@ -108,6 +117,18 @@ function Cars() {
     setSearchParams(params, { replace: true });
   }, [selectedCategory, searchQuery, setSearchParams]);
 
+  useEffect(() => {
+    if (!errorMessage) {
+      lastToastMessageRef.current = "";
+      return;
+    }
+
+    if (lastToastMessageRef.current !== errorMessage) {
+      toast.error(errorMessage);
+      lastToastMessageRef.current = errorMessage;
+    }
+  }, [errorMessage, toast]);
+
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
   };
@@ -125,6 +146,7 @@ function Cars() {
     setSearchQuery('');
     setPriceRange([0,1500]);
     setSortBy('default');
+    setErrorMessage('');
     setSearchParams({});
   }
   
@@ -223,6 +245,22 @@ function Cars() {
 
           {/* Car listing */}
           <div className="lg:w-3/4">
+            {errorMessage && (
+              <div
+                className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                role="alert"
+              >
+                <p className="text-sm font-medium">{errorMessage}</p>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="inline-flex items-center justify-center rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
+
             {isLoading ? (
               // Loading skeleton
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

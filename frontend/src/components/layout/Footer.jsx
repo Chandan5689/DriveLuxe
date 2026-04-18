@@ -21,11 +21,7 @@ function Footer() {
     icon:FaInstagram,
     link:'https://www.instagram.com/'
   },
-  {
-    id:4,
-    icon:FaLinkedin,
-    link:'https://www.linkedin.com/in/chandan-tiwari-634097369/'
-  },
+  
  ]
   
   return (
@@ -111,7 +107,7 @@ function Footer() {
               </li>
               <li className="flex items-start space-x-3">
                  <FaPhoneAlt  className='text-blue-500 text-xl mt-1'/>
-                <span className="text-gray-400">+1 (800) DRIVE-LUX</span>
+                <span className="text-gray-400">+1 (800) 123-4567</span>
               </li>
               <li className="flex items-start space-x-3">
                  <FaEnvelope  className='text-blue-500 text-xl mt-1'/>

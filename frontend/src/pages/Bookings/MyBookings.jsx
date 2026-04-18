@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { AuthContext } from "../../context/authContextValue";
 import { Link } from "react-router-dom";
 import { FaCheck } from "react-icons/fa6";
@@ -11,8 +11,10 @@ import {
   FaReceipt,
 } from "react-icons/fa";
 import { API_ENDPOINTS } from "../../config/api";
+import { useToast } from "../../context/useToast";
 
 function MyBookings() {
+  const toast = useToast();
   const statusIconMap = {
     pending: {
       icon: <FaHourglassHalf className="w-10 h-10 text-yellow-500" />,
@@ -40,9 +42,10 @@ function MyBookings() {
     },
   };
 
-  const { authToken } = useContext(AuthContext);
+  const { getAuthToken, isAuthenticated, isAuthLoaded } = useContext(AuthContext);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [animateCards, setAnimateCards] = useState(false);
 
@@ -61,29 +64,86 @@ function MyBookings() {
     return `$${amount.toLocaleString()}`;
   };
 
+  const extractErrorMessage = (payload, fallback) => {
+    if (!payload) return fallback;
+    if (typeof payload === "string") return payload;
+    if (Array.isArray(payload)) return payload.join(" ").trim() || fallback;
+    if (typeof payload === "object") {
+      if (typeof payload.detail === "string" && payload.detail.trim()) {
+        return payload.detail;
+      }
+      const flattened = Object.values(payload).flat().join(" ").trim();
+      return flattened || fallback;
+    }
+    return fallback;
+  };
+
+  const fetchBookings = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        setBookings([]);
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.BOOKINGS, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const responseIsJson =
+        response.headers.get("content-type")?.includes("application/json") ||
+        false;
+      const data = responseIsJson ? await response.json() : null;
+
+      if (!response.ok) {
+        throw new Error(
+          extractErrorMessage(data, "Unable to load your bookings right now.")
+        );
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("Unexpected response while loading your bookings.");
+      }
+
+      setBookings(data);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      setBookings([]);
+      setErrorMessage(
+        error?.message || "Unable to load your bookings right now."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthToken]);
+
   //for getting the data from the bookings like status and other
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.BOOKINGS, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${authToken}`,
-          },
-        });
-        const data = await response.json();
-        setBookings(data);
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (authToken) {
-      fetchBookings();
+    if (!isAuthLoaded) {
+      return;
     }
-  }, [authToken]);
+
+    if (!isAuthenticated) {
+      setBookings([]);
+      setErrorMessage("");
+      setLoading(false);
+      return;
+    }
+
+    fetchBookings();
+  }, [fetchBookings, isAuthenticated, isAuthLoaded]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+  }, [errorMessage, toast]);
 
   useEffect(() => {
     setAnimateCards(false);
@@ -190,6 +250,22 @@ function MyBookings() {
             </div>
           </div>
         </div>
+
+        {errorMessage && (
+          <div
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            role="alert"
+          >
+            <p className="text-sm font-medium">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={fetchBookings}
+              className="inline-flex items-center justify-center rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
         {bookings.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
