@@ -6,7 +6,7 @@ It provides a luxury-focused booking experience with protected booking flow, boo
 
 ## Features
 
-- User registration and login with token authentication
+- User authentication with Clerk
 - Browse car catalog with detailed car pages
 - Protected booking flow for authenticated users
 - Pre-selected booking from car cards and car detail page
@@ -35,7 +35,7 @@ It provides a luxury-focused booking experience with protected booking flow, boo
 
 - Django 5
 - Django REST Framework
-- DRF Token Authentication
+- Clerk (frontend auth + JWT)
 - django-cors-headers
 - SQLite (default)
 
@@ -80,12 +80,15 @@ DJANGO_SECRET_KEY=replace-with-a-secure-secret-key
 DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 DJANGO_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+CLERK_ISSUER=https://your-clerk-domain.clerk.accounts.dev
+CLERK_JWKS_URL=https://your-clerk-domain.clerk.accounts.dev/.well-known/jwks.json
+CLERK_AUDIENCE=
 ```
-
-Optional frontend environment file (`frontend/.env`):
+frontend environment file (`frontend/.env`):
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxx
 ```
 
 ## Local Setup
@@ -145,21 +148,13 @@ Base URL:
 
 - `/api/`
 
-## Booking Validation Rules
-
-- Pickup and return dates are required
-- Return date must be after pickup date
-- Phone number must be exactly 10 digits
-- Required personal and address fields cannot be blank
-- Terms must be accepted
-- Overlapping bookings for the same car and period are rejected
 
 ## Authentication Flow
 
-- User logs in via `/api/login/`
-- Backend returns token
-- Frontend stores token and sends it in Authorization header:
-  - `Authorization: Token <token>`
+- User signs in/up with Clerk UI (`/login`, `/register`)
+- Frontend gets Clerk session JWT and sends it in Authorization header:
+  - `Authorization: Bearer <jwt>`
+- Backend verifies JWT against Clerk JWKS and maps Clerk user to a Django user
 - Protected routes:
   - `/booking`
   - `/booking/:id`
