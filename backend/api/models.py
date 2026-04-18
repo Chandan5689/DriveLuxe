@@ -82,3 +82,12 @@ class Booking(models.Model):
             self.total_price = self.car.price*max(1,num_days) # at least 1 day
         super().save(*args, **kwargs)
 
+
+class ClerkIdentity(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='clerk_identity')
+    clerk_user_id = models.CharField(max_length=255, unique=True, db_index=True)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} ({self.clerk_user_id})"
+

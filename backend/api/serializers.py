@@ -1,40 +1,6 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
 import re
 from . models import Car,Booking
-
-class UserRegisterSerializer(serializers.ModelSerializer):
-    password =serializers.CharField(write_only=True, required=True,style={'input_type':'password'})
-    password2 = serializers.CharField(write_only=True, required=True,style={'input_type':'password'})
-    email =serializers.EmailField(required=True)
-    class Meta:
-        model = User
-        fields = ['username','email','password','password2']
-        extra_kwargs = {
-            'password':{'write_only':True},
-            'password2':{'write_only':True},
-        }
-
-    def validate_username(self,value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("This username is already taken.Try again.")
-        return value
-    
-    def validate_email(self,value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("This email is already registered.")
-        return value
-    
-    def validate(self, data):
-        if data['password'] != data['password2']:
-            raise serializers.ValidationError({"password2":"Passwords do not match."})
-        return data
-    
-    def create(self,validated_data):
-        validated_data.pop('password2')
-        user = User.objects.create_user(**validated_data)
-        return user
 
 
 class CarSerializer(serializers.ModelSerializer):
